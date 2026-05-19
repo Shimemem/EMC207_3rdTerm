@@ -1135,7 +1135,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &552703015
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1684,7 +1684,7 @@ NavMeshAgent:
   m_Enabled: 1
   m_AgentTypeID: 0
   m_Radius: 0.5
-  m_Speed: 5
+  m_Speed: 10
   m_Acceleration: 8
   avoidancePriority: 1
   m_AngularSpeed: 300
@@ -3596,8 +3596,8 @@ MonoBehaviour:
   - {fileID: 1865068816}
   chaseRange: 10
   loseRange: 16
-  walkSpeed: 2
-  runSpeed: 4
+  walkSpeed: 5
+  runSpeed: 7.5
   patrolStoppingDistance: 0.2
   chaseStoppingDistance: 1
   waypointReachDistance: 0.5

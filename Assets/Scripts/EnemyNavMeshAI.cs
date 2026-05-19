@@ -58,11 +58,20 @@ public class EnemyNavMeshAI : MonoBehaviour
         // If patrol point exist, start the patrol point
         if (HasPatrolPoints)
         {
-            
+            if (HasPatrolPoints)
+            {
+                ChangeState(EnemyStates.Patrol);
+            }
+            else
+            {
+                ChangeState(EnemyStates.Idle);
+            }
         }
     }
     private void Update()
     {
+        CheckForPlayer();
+        UpdateAnimation();
         switch (currentState)
         {
             case EnemyStates.Idle:
@@ -81,19 +90,21 @@ public class EnemyNavMeshAI : MonoBehaviour
 
     private void CheckForPlayer()
     {
-        float distanceToPlayer = Vector3.Distance(transform.position, player.position);
-        if (currentState != EnemyStates.Chase && distanceToPlayer <= chaseRange)
+        if (player == null) // If there is no player references, do nothing
+        {
+            return;
+        }
+        float distanceToPlayer = Vector3.Distance(transform.position, player.position); // Measure distance between the enemy and the player
+        if (currentState != EnemyStates.Chase && distanceToPlayer <= chaseRange)    //
         {
             ChangeState(EnemyStates.Chase);
         }
-
-        // If the enemy is chasing but the player gets too far
-        else if (currentState != EnemyStates.Chase && distanceToPlayer >= loseRange)
+        else if (currentState != EnemyStates.Chase && distanceToPlayer >= loseRange)    // If the enemy is chasing but the player gets too far
         {
             ChangeState(EnemyStates.Patrol);
         }
 
-        else if (currentState != EnemyStates.Patrol && distanceToPlayer >= loseRange)
+        else if (currentState != EnemyStates.Patrol && distanceToPlayer >= loseRange)   // 
         {
             ChangeState(EnemyStates.Patrol);
         }
@@ -113,7 +124,7 @@ public class EnemyNavMeshAI : MonoBehaviour
         // Stores the new state
         currentState = newState;
 
-        switch (currentState)
+        switch (currentState)   // Run the correct "Enter" Method
         {
             case EnemyStates.Idle:
                 EnterIdle();
@@ -135,23 +146,44 @@ public class EnemyNavMeshAI : MonoBehaviour
     {
         agent.isStopped = true; // prevents NavMeshAgent from moving
         agent.ResetPath();  // Clear the current path
-        waitTimer = 0;
+        waitTimer = 0;  // Resets wait timer
     }
     private void UpdateIdle()
     {
-
+        // If the navmesh does anything during idle
     }
     // Patrol State
     private void EnterPatrol()
     {
-        agent.isStopped = false;
-        agent.speed = walkSpeed;
-        agent.stoppingDistance = patrolStoppingDistance;
+        agent.isStopped = false;    // Allows AI to Move
+        agent.speed = walkSpeed;    // Sets the speed to walking speed
+        agent.stoppingDistance = patrolStoppingDistance;    // Stops the AI on certain distance during partrol
         waitTimer = 0;
+        SetCurrentPatrolDestination();  // Move towards the current patrol point
     }
     private void UpdatePatrol()
     {
-
+        if (!HasPatrolPoints)   // If no patrol points, switch to Idle
+        {
+            ChangeState(EnemyStates.Idle);
+            return;
+        }
+        if (!ReachedDestination())  // If the AI has not reached destination, keep moving
+        {
+            return;
+        }
+        if (ReachedDestination())
+        {
+            agent.isStopped = true;
+            waitTimer += Time.deltaTime;
+            if (waitTimer >= waitTimeAtPoint)   // if Ai waited enough on the patrol point
+            {
+                waitTimer = 0;  // reset wait timer
+                ChooseNextPatrolPoint();
+                agent.isStopped = false;
+                SetCurrentPatrolDestination();
+            }
+        }
     }
     // Chase State
     private void EnterChase()
@@ -163,7 +195,31 @@ public class EnemyNavMeshAI : MonoBehaviour
     }
     private void UpdateChase()
     {
+        float distanceToPlayer = Vector3.Distance(transform.position, player.position);
 
+        if (player == null)   // If the player no longer exist, FAILSAFE
+        {
+            if (HasPatrolPoints)
+            {
+                ChangeState(EnemyStates.Patrol);   
+            }
+            else
+            {
+                ChangeState(EnemyStates.Idle);
+            }
+        }
+        if (distanceToPlayer <= chaseStoppingDistance)  // If the enemy is close enough to the player, stop moving
+        {
+            // Attack State
+            agent.isStopped = true;
+            agent.ResetPath();
+        }
+        else    // If the player 
+        {
+            agent.isStopped = false;
+            agent.SetDestination(player.position);
+        }
+        return;
     }
 
     // Chekcs if the AI reached its current Destination
@@ -192,6 +248,10 @@ public class EnemyNavMeshAI : MonoBehaviour
         {
             return;
         }
+        if (randomPatrol && patrolPoints.Length > 1)
+        {
+            int nextIndex = patrolIndex;
+        }
         Transform point = patrolPoints[patrolIndex];
         if (point == null)  // If this patrol point is missing, choose another one
         {
@@ -205,7 +265,45 @@ public class EnemyNavMeshAI : MonoBehaviour
     }
     private void ChooseNextPatrolPoint()    // Method chooses the next patrol point
     {
+        if (!HasPatrolPoints) { return; }   // If there are no patrol points, do nothing
+        if (randomPatrol && patrolPoints.Length > 1)
+        {
+            int nextIndex = patrolIndex; // logic for random patrolling
+            while (nextIndex == patrolIndex)
+            {
+                nextIndex = Random.Range(0, patrolPoints.Length);
+            }
+            patrolIndex = nextIndex;
+        }
+        else
+        {
+            patrolIndex++;  // move to the next patrol point
+            if (patrolIndex >= patrolPoints.Length) // resets the patrol point to zero
+            {
+                patrolIndex = 0;
+            }
+        }
+    }
 
+    private void UpdateAnimation()
+    {
+        float animationSpeed = 0;
+
+        bool isMoving = agent.velocity.magnitude > 0.05 && !agent.isStopped;    // if agent is moving
+        if (currentState == EnemyStates.Patrol && isMoving)
+        {
+            animationSpeed = 0.5f;
+        }
+        else if (currentState == EnemyStates.Chase && isMoving)
+        {
+            animationSpeed = 1.0f;
+        }
+
+        // IDLE = 0
+        // WALK = 0.5
+        // RUN = 1
+
+        animator.SetFloat(speedParameter, animationSpeed, animationDampTime, Time.deltaTime);
     }
 
     private void OnDrawGizmos()
